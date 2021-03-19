@@ -45,6 +45,9 @@ def main(args):
                priority queue...**
             后面实在写不下去了
     """
+def FCFS():
+    pass
+
     rand = Rand48(args.seed, args.Lambda, args.max)
     FCFS()
     Rand48(args.seed, args.Lambda, args.max)
