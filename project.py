@@ -50,7 +50,7 @@ def main(args):
     Rand48(args.seed, args.Lambda, args.max)
     SJF()
     Rand48(args.seed, args.Lambda, args.max)
-    SRF()
+    SRT()
     Rand48(args.seed, args.Lambda, args.max)
     RR()
 
