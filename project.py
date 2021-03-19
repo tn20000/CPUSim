@@ -47,7 +47,6 @@ def main(args):
     """
 def FCFS():
     pass
-
     rand = Rand48(args.seed, args.Lambda, args.max)
     FCFS()
     Rand48(args.seed, args.Lambda, args.max)
