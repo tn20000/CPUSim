@@ -2,6 +2,7 @@ import argparse
 from enum import Enum
 from Rand48 import Rand48
 import math
+import heapq
 
 class Precedence(Enum):
     END = 'END'
