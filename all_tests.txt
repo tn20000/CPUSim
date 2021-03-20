@@ -1,0 +1,7 @@
+python project.py 1 2 0.01 256 4 0.5 128 > output02-full.txt
+
+python project.py 2 2 0.01 256 4 0.5 128 > output03-full.txt
+
+python project.py 16 2 0.01 256 4 0.75 64 > output04-full.txt
+
+python project.py 8 64 0.001 4096 4 0.5 2048 > output05-full.txt
