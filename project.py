@@ -1,14 +1,24 @@
-import argparse
 from enum import Enum
 from Rand48 import Rand48
+from Process import Process
+from Queue import Queue
+import argparse
 import math
 import heapq
+import copy
 
 class Precedence(Enum):
+    """
+    A precedence enum for parsing
+    """
     END = 'END'
     BEGINNING = 'BEGINNING'
 
 def parsing():
+    """
+    A method to parse all arguments
+    @return args: a NameSpace containing all argument values 
+    """
     parser = argparse.ArgumentParser(description='opsys simulation project')
     parser.add_argument('n', type=int, help='number of processes')
     parser.add_argument('seed', type=int, help='the seed for random number generator')
@@ -20,71 +30,247 @@ def parsing():
     parser.add_argument('rradd', type=Precedence, help='whether processes are added to the END or BEGINNING in RR. The default is END', default='END', nargs='?')
     return parser.parse_args()
 
-def main(args):
+def create_processes(rand, n):
     """
-    Pseudocode:
-    for each algorithm:
-        1. create a random number generator (reseed)
-        2. for each process (1 to n):
-            a. calculate the arrival time, number of bursts, and the length of 
-            each burst(stored in a list) using the random number generator
-            ** there will be no IO burst after the last CPU burst, so 
-            len(timelist) == 2 * num_burst - 1 **
-            b. create a process object with those attributes
-        3. set clock to 0
-        4. do a first pass to see if there's any process arriving at time 0, if
-        so set cpu_state to context switching, else to idle
-        5. while (True):
-            ** The CPU has 3 states: CPU burst, context switching, idle. **
+    A method to create all processes objects once and for all.
+    @param rand: rand48 generator
+    @param n: number of processes needed to be generated
+    @return processes: list of processes generated
+    """
+    name = 'A'
+    processes = []
+    for _ in range(n):
+        arrival = math.floor(rand.next_exp())
+        num_bursts = math.ceil(rand.drand48() * 100)
+        timelist = []
+        for _ in range(num_bursts - 1):
+            timelist.append(math.ceil(rand.next_exp()))
+            timelist.append(math.ceil(rand.next_exp()) * 10)
+        timelist.append(math.ceil(rand.next_exp()))
+        processes.append(Process(name, arrival, num_bursts, timelist))
+        name = chr(ord(name) + 1)
+    return processes
 
-            a. increase clock by 1
-            b. tick_down all processes (by calling tick_down)
-            c. based on the return value of tick_down, put all processes ready
-               into the queue 
-               ** Queue would be different for different algorithms--FIFO queue,
-               priority queue...**
-            后面实在写不下去了
+def FCFS(processes, tcs, simout):
     """
+    The FCFS algorithm
+    @param processes: list of processes to be scheduled
+    @param tcs: time required to perform **HALF** context switches, i.e. time
+    needed to for either switching in or switching out
+    @param simout: the out file object
+    """
+
+    # print all processes
+    for p in processes:
+        s = 's'
+        if p.num_bursts == 1:
+            s = ''
+        print('Process', p.name, '[NEW] (arrival time', p.arrival, 'ms)', p.num_bursts, 'CPU burst{}'.format(s))
+
+########################## Variable Initialization #############################
+
+    # clock for counting time
+    clock = 0 
+
+    # queue of FCFS, could be changed to accommodate priority queue
+    queue = Queue()
+
+    # List of processes before arrival
+    pre_arrival = [] 
+
+    # List of processes currently doing IO. Note that this list must be sorted
+    # at all times
+    ios = []
+
+    # Current bursting process. If the CPU is idle, this variable is set to None
+    bursting = None
+
+    # Indicates whether the CPU is doing the first half of the context switch
+    switch_in = False
+
+    # Indicates whether the CPU is doing the second half of the context switch
+    switch_out = False
+
+    # Preparation counter for context switch. If preparation == 0, context
+    # switch is done
+    preparation = tcs
+
+    # The process that's going to IO. After a process ends its CPU burst, it's
+    # "going" to IO, but it only actually goes to IO after the context switch
+    # is done
+    to_io = None
+
+    # List of burst times to calculate the metrics
+    burst_time = []
+
+################################## Overhead ####################################
+
+    print('time 0ms: Simulator started for FCFS', queue)
+
+    # Put all processes to either the queue (if arrival time is 0) or the
+    # pre_arrival list
+    for p in processes:
+        if p.arrival == 0:
+            queue.append(p)
+            print('time {}ms: Process {} arrived; placed on ready queue'.format(clock, p.name), queue)
+        else:
+            pre_arrival.append(p)
+
+    # Select a process to burst if the queue is not empty
+    if len(queue) != 0:
+        bursting = queue.pop(0)
+        p.wait.append(0)
+        switch_in = True
+        preparation = tcs - 1
+
+################################# Simulation ###################################
+
+    while (True):
+        """
+        The workflow:
+        1. taking out a process from bursting
+        2. add a new process to burst
+        3. check for any completed IO
+        4. check for any process arrival
+
+        For ties in any of the above events, break with names in alphabetical
+        order, i.e. Process A is should finish IO ahead of Process B
+        """
+        
+        # Increment time first
+        clock += 1
+
+        # Do a CPU burst
+        if bursting != None and (not switch_in):
+            bursting.timelist[0] -= 1
+            burst_time[-1] += 1
+            
+            # If a process finished bursting, check if the process is
+            # terminating. If not, put it to IO. Also turns on context switches.
+            if bursting.timelist[0] == 0:
+                bursting.timelist.pop(0)
+                bursting.num_bursts -= 1
+                if bursting.num_bursts == 0:
+                    print('time {}ms: Process {} terminated'.format(clock, bursting.name), queue)
+                else:
+                    s = 's'
+                    if bursting.num_bursts == 1:
+                        s = ''
+                    print('time {}ms: Process {} completed a CPU burst; {} burst{} to go'.format(clock, bursting.name, bursting.num_bursts, s), queue)
+                    print('time {}ms: Process {} switching out of CPU; will block on I/O until time {}ms'.format(clock, bursting.name, clock + bursting.timelist[0] + tcs), queue)
+                    to_io = bursting
+                switch_out = True
+                preparation = tcs + 1
+                bursting = None
+
+        # Doing context switch and if context switch done, put a process into
+        # bursting
+        if switch_in:
+            if preparation != 0:
+                preparation -= 1
+            else:
+                switch_in = False
+                burst_time.append(0)
+                print('time {}ms: Process {} started using the CPU for {}ms burst'.format(clock, bursting.name, bursting.timelist[0]), queue)
+        
+        # Do IO for each process and check if any process completed IO. Note
+        # that the IO list must always be in alphabetical order
+        remove = []
+        for p in ios:
+            p.timelist[0] -= 1
+            if p.timelist[0] == 0:
+                p.timelist.pop(0)
+                queue.append(p)
+                p.wait.append(0)
+                remove.append(p)
+                print('time {}ms: Process {} completed I/O; placed on ready queue'.format(clock, p.name), queue)
+        for p in remove:
+            ios.remove(p)
+        ios.sort()
+
+        # Decrement arrival time and check if any process arrives
+        remove.clear()
+        for p in pre_arrival:
+            p.arrival -= 1
+            if p.arrival == 0:
+                queue.append(p)
+                p.wait.append(0)
+                remove.append(p)
+                print('time {}ms: Process {} arrived; placed on ready queue'.format(clock, p.name), queue)
+        for p in remove:
+            pre_arrival.remove(p)
+
+        # Doing switch out. If done, put a process into IO.
+        if switch_out:
+            preparation -= 1
+            if preparation == 0:
+                switch_out = False
+                if to_io != None:
+                    ios.append(to_io)
+                    ios.sort()
+                to_io = None
+
+        # If the CPU is idle and the queue is not empty, pop the queue and start
+        # switching in
+        if bursting == None and len(queue) != 0 and (not switch_out) and (not switch_in):
+            bursting = queue.pop(0)
+            switch_in = True
+            preparation = tcs - 1
+
+        # For each process that's still in the queue, increment its wait time
+        # for metrics calculation
+        for p in queue:
+            p.wait[-1] += 1
+
+        # If there isn't a process anywhere, break the simulation, and directly
+        # add tcs to the clock to account for the final context switch
+        if len(pre_arrival) == 0 and len(ios) == 0 and bursting == None and len(queue) == 0 and to_io == None:
+            print('time {}ms: Simulator ended for FCFS'.format(clock + tcs), queue)
+            break
+
+############################# metrics calculation ##############################
+
+    # Calculate average burst time
+    avg_burst = sum(burst_time) / len(burst_time)
+
+    # Calculate average wait time by appending all wait times from all processes
+    # together, then get the average
+    avg_wait = []
+    for p in processes:
+        avg_wait += p.wait
+    avg_wait = sum(avg_wait) / len(avg_wait)
+
+    # Create the metrics data. 
+    # Note that avg_turnaround = avg_burst + avg_wait + tcs * 2
+    # Here FCFS doesn't have preemptions.
+    data = 'Algorithm FCFS\n' + \
+           '-- average CPU burst time: {:.3f} ms\n'.format(avg_burst) + \
+           '-- average wait time: {:.3f} ms\n'.format(avg_wait) + \
+           '-- average turnaround time: {:.3f} ms\n'.format(avg_burst + avg_wait + tcs * 2) + \
+           '-- total number of context switches: {}\n'.format(len(burst_time)) + \
+           '-- total number of preemptions: 0\n' + \
+           '-- CPU utilization: {:.3f}%\n'.format(sum(burst_time) / (clock + tcs) * 100)
+    simout.write(data)
+
+
+def main(args):
+    
+    # 48-bit random number generator
     rand = Rand48(args.seed, args.Lambda, args.max)
-    FCFS()
-    Rand48(args.seed, args.Lambda, args.max)
-    SJF()
-    Rand48(args.seed, args.Lambda, args.max)
-    SRT()
-    Rand48(args.seed, args.Lambda, args.max)
-    RR()
+
+    # Processes created using the random number generator
+    processes = create_processes(rand, args.n)
+
+    # metrics out file
+    simout = open('simout.txt', 'w')
+
+    # Note that we use a copy of the processes generated, so we don't need to
+    # generate the processes again. We divide tcs by 2 to indicate half of the 
+    # context switch time
+    FCFS(copy.deepcopy(processes), args.tcs // 2, simout)
+    # SJF()
+    # SRT()
+    # RR()
 
 if __name__ == '__main__':
-    args = parsing()
-    rand = Rand48(args.seed, args.Lambda, args.max)
-    clock = 0
-    arrival = math.floor(rand.next_exp())
-    clock += arrival
-    print(arrival)
-    num_bursts = math.ceil(rand.drand48() * 100)
-    print(num_bursts)
-    tcs = args.tcs // 2
-    for i in range(num_bursts):
-        clock += tcs
-        clock += math.ceil(rand.next_exp())
-        print('CPU:', clock)
-        clock += tcs
-        if i == num_bursts - 1:
-            break
-        clock += 10 * math.ceil(rand.next_exp())
-        print('IO:', clock)
-    
-    clock = 0
-    arrival = math.floor(rand.next_exp())
-    clock += arrival
-    print(arrival)
-    num_bursts = math.ceil(rand.drand48() * 100)
-    print(num_bursts)
-    tcs = args.tcs // 2
-    for _ in range(num_bursts):
-        clock += tcs
-        clock += math.ceil(rand.next_exp())
-        print('CPU:', clock)
-        clock += tcs
-        clock += 10 * math.ceil(rand.next_exp())
-        print('IO:', clock)
+    main(parsing())
