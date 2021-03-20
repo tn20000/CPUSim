@@ -156,8 +156,9 @@ def FCFS(processes, tcs, simout):
                     s = 's'
                     if bursting.num_bursts == 1:
                         s = ''
-                    print('time {}ms: Process {} completed a CPU burst; {} burst{} to go'.format(clock, bursting.name, bursting.num_bursts, s), queue)
-                    print('time {}ms: Process {} switching out of CPU; will block on I/O until time {}ms'.format(clock, bursting.name, clock + bursting.timelist[0] + tcs), queue)
+                    if clock < 1000:
+                        print('time {}ms: Process {} completed a CPU burst; {} burst{} to go'.format(clock, bursting.name, bursting.num_bursts, s), queue)
+                        print('time {}ms: Process {} switching out of CPU; will block on I/O until time {}ms'.format(clock, bursting.name, clock + bursting.timelist[0] + tcs), queue)
                     to_io = bursting
                 switch_out = True
                 preparation = tcs + 1
@@ -171,7 +172,8 @@ def FCFS(processes, tcs, simout):
             else:
                 switch_in = False
                 burst_time.append(0)
-                print('time {}ms: Process {} started using the CPU for {}ms burst'.format(clock, bursting.name, bursting.timelist[0]), queue)
+                if clock < 1000:
+                    print('time {}ms: Process {} started using the CPU for {}ms burst'.format(clock, bursting.name, bursting.timelist[0]), queue)
         
         # Do IO for each process and check if any process completed IO. Note
         # that the IO list must always be in alphabetical order
@@ -183,7 +185,8 @@ def FCFS(processes, tcs, simout):
                 queue.append(p)
                 p.wait.append(0)
                 remove.append(p)
-                print('time {}ms: Process {} completed I/O; placed on ready queue'.format(clock, p.name), queue)
+                if clock < 1000:
+                    print('time {}ms: Process {} completed I/O; placed on ready queue'.format(clock, p.name), queue)
         for p in remove:
             ios.remove(p)
         ios.sort()
@@ -196,7 +199,8 @@ def FCFS(processes, tcs, simout):
                 queue.append(p)
                 p.wait.append(0)
                 remove.append(p)
-                print('time {}ms: Process {} arrived; placed on ready queue'.format(clock, p.name), queue)
+                if clock < 1000:
+                    print('time {}ms: Process {} arrived; placed on ready queue'.format(clock, p.name), queue)
         for p in remove:
             pre_arrival.remove(p)
 
