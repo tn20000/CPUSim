@@ -37,6 +37,7 @@ def create_processes(rand, n):
     @param n: number of processes needed to be generated
     @return processes: list of processes generated
     """
+<<<<<<< HEAD
     name = 'A'
     processes = []
     for _ in range(n):
@@ -50,6 +51,18 @@ def create_processes(rand, n):
         processes.append(Process(name, arrival, num_bursts, timelist))
         name = chr(ord(name) + 1)
     return processes
+=======
+def FCFS():
+    pass
+    rand = Rand48(args.seed, args.Lambda, args.max)
+    FCFS()
+    Rand48(args.seed, args.Lambda, args.max)
+    SJF()
+    Rand48(args.seed, args.Lambda, args.max)
+    SRT()
+    Rand48(args.seed, args.Lambda, args.max)
+    RR()
+>>>>>>> 1c470a3ad192d8e8ea8b975aa13a7b89aa54c3e2
 
 def FCFS(processes, tcs, simout):
     """
