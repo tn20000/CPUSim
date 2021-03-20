@@ -4,7 +4,6 @@ from Process import Process
 from Queue import Queue
 import argparse
 import math
-import heapq
 import copy
 
 class Precedence(Enum):
@@ -111,14 +110,14 @@ def FCFS(processes, tcs, simout):
     # pre_arrival list
     for p in processes:
         if p.arrival == 0:
-            queue.append(p)
+            queue.push(p)
             print('time {}ms: Process {} arrived; placed on ready queue'.format(clock, p.name), queue)
         else:
             pre_arrival.append(p)
 
     # Select a process to burst if the queue is not empty
     if len(queue) != 0:
-        bursting = queue.pop(0)
+        bursting = queue.pop()
         p.wait.append(0)
         switch_in = True
         preparation = tcs - 1
@@ -156,7 +155,7 @@ def FCFS(processes, tcs, simout):
                     s = 's'
                     if bursting.num_bursts == 1:
                         s = ''
-                    if clock < 1000:
+                    if clock < 1000 or not __debug__:
                         print('time {}ms: Process {} completed a CPU burst; {} burst{} to go'.format(clock, bursting.name, bursting.num_bursts, s), queue)
                         print('time {}ms: Process {} switching out of CPU; will block on I/O until time {}ms'.format(clock, bursting.name, clock + bursting.timelist[0] + tcs), queue)
                     to_io = bursting
@@ -172,7 +171,7 @@ def FCFS(processes, tcs, simout):
             else:
                 switch_in = False
                 burst_time.append(0)
-                if clock < 1000:
+                if clock < 1000 or not __debug__:
                     print('time {}ms: Process {} started using the CPU for {}ms burst'.format(clock, bursting.name, bursting.timelist[0]), queue)
         
         # Do IO for each process and check if any process completed IO. Note
@@ -182,10 +181,10 @@ def FCFS(processes, tcs, simout):
             p.timelist[0] -= 1
             if p.timelist[0] == 0:
                 p.timelist.pop(0)
-                queue.append(p)
+                queue.push(p)
                 p.wait.append(0)
                 remove.append(p)
-                if clock < 1000:
+                if clock < 1000 or not __debug__:
                     print('time {}ms: Process {} completed I/O; placed on ready queue'.format(clock, p.name), queue)
         for p in remove:
             ios.remove(p)
@@ -196,10 +195,10 @@ def FCFS(processes, tcs, simout):
         for p in pre_arrival:
             p.arrival -= 1
             if p.arrival == 0:
-                queue.append(p)
+                queue.push(p)
                 p.wait.append(0)
                 remove.append(p)
-                if clock < 1000:
+                if clock < 1000 or not __debug__:
                     print('time {}ms: Process {} arrived; placed on ready queue'.format(clock, p.name), queue)
         for p in remove:
             pre_arrival.remove(p)
@@ -217,7 +216,7 @@ def FCFS(processes, tcs, simout):
         # If the CPU is idle and the queue is not empty, pop the queue and start
         # switching in
         if bursting == None and len(queue) != 0 and (not switch_out) and (not switch_in):
-            bursting = queue.pop(0)
+            bursting = queue.pop()
             switch_in = True
             preparation = tcs - 1
 
