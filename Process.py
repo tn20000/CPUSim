@@ -5,7 +5,7 @@ class Process:
     A Process class to represent a process
     """
 
-    def __init__(self, name, arrival, num_bursts, timelist):
+    def __init__(self, name, arrival, num_bursts, timelist,tau):
         """
         @param name: the name of the process, A-Z
         @param arrival: the arrival time of the process
@@ -20,6 +20,7 @@ class Process:
         self.arrival = arrival
         self.num_bursts = num_bursts
         self.timelist = timelist
+        self.tau=tau
         self.wait = []
 
     def __str__(self):
