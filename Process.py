@@ -1,4 +1,5 @@
 from Rand48 import Rand48
+import copy
 
 class Process:
     """
@@ -20,6 +21,7 @@ class Process:
         self.arrival = arrival
         self.num_bursts = num_bursts
         self.timelist = timelist
+        self.consttimelist = copy.deepcopy(timelist)
         self.tau=tau
         self.wait = []
 

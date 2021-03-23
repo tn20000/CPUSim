@@ -577,6 +577,7 @@ def RR(processes, tcs, simout,tslice,rradd):
             # terminating. If not, put it to IO. Also turns on context switches.
             if bursting.timelist[0] == 0:
                 bursting.timelist.pop(0)
+                bursting.consttimelist.pop(0)
                 bursting.num_bursts -= 1
                 if bursting.num_bursts == 0:
                     print('time {}ms: Process {} terminated'.format(clock, bursting.name), queue)
@@ -613,7 +614,10 @@ def RR(processes, tcs, simout,tslice,rradd):
                 switch_in = False
                 burst_time.append(0)
                 if clock < 1000 or not __debug__:
-                    print('time {}ms: Process {} started using the CPU for {}ms burst'.format(clock, bursting.name, bursting.timelist[0]), queue)
+                    if (bursting.timelist[0]==bursting.consttimelist[0]):
+                        print('time {}ms: Process {} started using the CPU for {}ms burst'.format(clock, bursting.name, bursting.timelist[0]), queue)
+                    else:
+                        print('time {}ms: Process {} started using the CPU with {}ms burst remaining'.format(clock,bursting.name,bursting.timelist[0]),queue)
         
         #push the preempt process in
         if switch_out:
@@ -631,6 +635,7 @@ def RR(processes, tcs, simout,tslice,rradd):
             p.timelist[0] -= 1
             if p.timelist[0] == 0:
                 p.timelist.pop(0)
+                p.consttimelist.pop(0)
                 queue.push(p)
                 p.wait.append(0)
                 remove.append(p)
