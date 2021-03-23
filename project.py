@@ -524,8 +524,6 @@ def RR(processes, tcs, simout,tslice,rradd):
 
     preempt_flag=False
 
-    #storing the preempted process
-    preempt_p=None
 
     burst_number=0
 
@@ -599,7 +597,7 @@ def RR(processes, tcs, simout,tslice,rradd):
                 switch_out=True
                 preparation = tcs + 1
                 #this is where I push it in prematurely
-                queue.push(bursting)
+                to_io=bursting
                 bursting=None
                 preemption += 1
                 preempt_flag=True
@@ -617,6 +615,15 @@ def RR(processes, tcs, simout,tslice,rradd):
                 if clock < 1000 or not __debug__:
                     print('time {}ms: Process {} started using the CPU for {}ms burst'.format(clock, bursting.name, bursting.timelist[0]), queue)
         
+        #push the preempt process in
+        if switch_out:
+            if ((preparation-1)==0 and (preempt_flag)):
+                switch_out=False
+                preempt_flag=False
+                queue.push(to_io)
+                to_io=None
+                ts=tslice
+
         # Do IO for each process and check if any process completed IO. Note
         # that the IO list must always be in alphabetical order
         remove = []
@@ -649,17 +656,13 @@ def RR(processes, tcs, simout,tslice,rradd):
         # Doing switch out. If done, put a process into IO.
         if switch_out:
             preparation -= 1
-            ts=tslice
             if preparation == 0:
-                if (preempt_flag):
-                    switch_out=False
-                    preempt_flag=False
-                else:
-                    switch_out = False
-                    if to_io != None:
-                        ios.append(to_io)
-                        ios.sort()
-                    to_io = None
+                switch_out = False
+                if to_io != None:
+                    ios.append(to_io)
+                    ios.sort()
+                to_io = None
+                ts=tslice
 
         # If the CPU is idle and the queue is not empty, pop the queue and start
         # switching in
@@ -698,7 +701,7 @@ def RR(processes, tcs, simout,tslice,rradd):
     data = 'Algorithm RR\n' + \
            '-- average CPU burst time: {:.3f} ms\n'.format(avg_burst) + \
            '-- average wait time: {:.3f} ms\n'.format(avg_wait) + \
-           '-- average turnaround time: {:.3f} ms\n'.format(avg_burst + avg_wait + tcs * 2) + \
+           '-- average turnaround time: {:.3f} ms\n'.format(avg_burst + avg_wait + (len(burst_time))*tcs * 2/(burst_number)) + \
            '-- total number of context switches: {}\n'.format(len(burst_time)) + \
            '-- total number of preemptions: {}\n'.format(preemption) + \
            '-- CPU utilization: {:.3f}%\n'.format(sum(burst_time) / (clock + tcs) * 100)
