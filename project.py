@@ -269,7 +269,7 @@ def SJF(processes, tcs, simout,lamb,alpha):
         s = 's'
         if p.num_bursts == 1:
             s = ''
-        print('Process', p.name, '[NEW] (arrival time', p.arrival, 'ms)', p.num_bursts, 'CPU burst{}'.format(s))
+        print('Process', p.name, '[NEW] (arrival time', p.arrival, 'ms)', p.num_bursts, 'CPU burst{} (tau {}ms)'.format(s,int(1/lamb)))
 
 ########################## Variable Initialization #############################
 
