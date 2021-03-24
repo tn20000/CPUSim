@@ -1,5 +1,5 @@
 import heapq
-
+import copy
 class Queue():
     """
     A Queue class that has a mode for different types of queue. Overrides 
@@ -53,7 +53,12 @@ class Queue():
             if self.mode == 'queue' or self.mode == 'stack':
                 s += ' ' + str(x)
             elif self.mode == 'pq':
-                s += ' ' + str(x[1])
+                #s += ' ' + str(x[1])
+                break
+        if (self.mode == 'pq'):
+            temp = copy.deepcopy(self.container)
+            while (temp):
+                s += ' ' + str(heapq.heappop(temp)[1])
         return s + ']'
 
     def __len__(self):

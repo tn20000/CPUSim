@@ -226,7 +226,7 @@ def FCFS(processes, tcs, simout):
         # If there isn't a process anywhere, break the simulation, and directly
         # add tcs to the clock to account for the final context switch
         if len(pre_arrival) == 0 and len(ios) == 0 and bursting == None and len(queue) == 0 and to_io == None:
-            print('time {}ms: Simulator ended for FCFS'.format(clock + tcs), queue)
+            print('time {}ms: Simulator ended for FCFS'.format(clock + tcs), queue,'\n')
             break
 
 ############################# metrics calculation ##############################
@@ -362,11 +362,12 @@ def SJF(processes, tcs, simout,lamb,alpha):
                     s = 's'
                     if bursting.num_bursts == 1:
                         s = ''
+                    new_tau = tau_function(bursting,alpha)
                     if clock < 1000 or not __debug__:
                         print('time {}ms: Process {} (tau {}ms) completed a CPU burst; {} burst{} to go'.format(clock, bursting.name, bursting.tau,bursting.num_bursts, s), queue)
-                        bursting.tau=tau_function(bursting,alpha)
-                        print('time {}ms: Recalculated tau ({}ms) for process {}'.format(clock,bursting.tau,bursting.name),queue)
+                        print('time {}ms: Recalculated tau ({}ms) for process {}'.format(clock,new_tau,bursting.name),queue)
                         print('time {}ms: Process {} switching out of CPU; will block on I/O until time {}ms'.format(clock, bursting.name, clock + bursting.timelist[0] + tcs), queue)
+                    bursting.tau=new_tau
                     to_io = bursting
                 switch_out = True
                 bursting.cpu_time = 0
@@ -439,7 +440,7 @@ def SJF(processes, tcs, simout,lamb,alpha):
         # If there isn't a process anywhere, break the simulation, and directly
         # add tcs to the clock to account for the final context switch
         if len(pre_arrival) == 0 and len(ios) == 0 and bursting == None and len(queue) == 0 and to_io == None:
-            print('time {}ms: Simulator ended for SJF'.format(clock + tcs), queue)
+            print('time {}ms: Simulator ended for SJF'.format(clock + tcs), queue,'\n')
             break
 
 ############################# metrics calculation ##############################
@@ -480,7 +481,7 @@ def SRT(processes, tcs, simout,lamb,alpha):
         s = 's'
         if p.num_bursts == 1:
             s = ''
-        print('Process', p.name, '[NEW] (arrival time', p.arrival, 'ms)', p.num_bursts, 'CPU burst{}'.format(s))
+        print('Process', p.name, '[NEW] (arrival time', p.arrival, 'ms)', p.num_bursts, 'CPU burst{} (tau {}ms)'.format(s,int(1/lamb)))
 
 ########################## Variable Initialization #############################
 
@@ -547,6 +548,7 @@ def SRT(processes, tcs, simout,lamb,alpha):
 
     preempt_flag = False
 
+    finished_io = None
     while (True):
         """
         The workflow:
@@ -561,7 +563,6 @@ def SRT(processes, tcs, simout,lamb,alpha):
         
         # Increment time first
         clock += 1
-
         # Do a CPU burst
         if bursting != None and (not switch_in):
             bursting.timelist[0] -= 1
@@ -579,11 +580,12 @@ def SRT(processes, tcs, simout,lamb,alpha):
                     s = 's'
                     if bursting.num_bursts == 1:
                         s = ''
+                    new_tau=tau_function(bursting,alpha)
                     if clock < 1000 or not __debug__:
                         print('time {}ms: Process {} (tau {}ms) completed a CPU burst; {} burst{} to go'.format(clock, bursting.name, bursting.tau,bursting.num_bursts, s), queue)
-                        bursting.tau=tau_function(bursting,alpha)
-                        print('time {}ms: Recalculated tau ({}ms) for process {}'.format(clock,bursting.tau,bursting.name),queue)
+                        print('time {}ms: Recalculated tau ({}ms) for process {}'.format(clock,new_tau,bursting.name),queue)
                         print('time {}ms: Process {} switching out of CPU; will block on I/O until time {}ms'.format(clock, bursting.name, clock + bursting.timelist[0] + tcs), queue)
+                    bursting.tau = new_tau
                     to_io = bursting
                 switch_out = True
                 bursting.cpu_time=0
@@ -600,13 +602,24 @@ def SRT(processes, tcs, simout,lamb,alpha):
                 burst_time.append(0)
                 if clock < 1000 or not __debug__:
                     print('time {}ms: Process {} (tau {}ms) started using the CPU with {}ms burst remaining'.format(clock,bursting.name,bursting.tau, bursting.timelist[0]), queue)
+                if (finished_io):
+                    if (bursting.tau-bursting.cpu_time>finished_io.tau):
+                        if clock<1000 or not __debug__:
+                            print('time {}ms: Process {} (tau {}ms) will preempt {}'.format(clock,finished_io.name,finished_io.tau,bursting.name),queue)
+                        preemption +=1
+                        switch_out = True
+                        preparation = tcs + 1
+                        to_io=bursting
+                        preempt_flag = True
+                        bursting = None
+                finished_io = None
         
         #push the preempt process in
         if switch_out:
             if ((preparation-1)==0 and (preempt_flag)):
                 switch_out=False
                 preempt_flag=False
-                queue.push((to_io.tau,to_io))
+                queue.push((to_io.tau-to_io.cpu_time,to_io))
                 to_io=None
 
         # Do IO for each process and check if any process completed IO. Note
@@ -619,18 +632,24 @@ def SRT(processes, tcs, simout,lamb,alpha):
                 queue.push((p.tau,p))
                 p.wait.append(0)
                 remove.append(p)
-                if clock < 1000 or not __debug__:
-                    if (not(bursting==None)):
-                        if (bursting.tau-bursting.cpu_time>p.tau):
-                            print('time {}ms: Process {} (tau {}ms) comleted I/O; preempting {}'.format(clock,p.name,p.tau,bursting.name),queue)
-                            preemption +=1
-                            switch_out = True
-                            preparation = tcs + 1
-                            to_io=bursting
-                            preempt_flag = True
-                            bursting = None
-                        else: print('time {}ms: Process {} (tau {}ms) completed I/O; placed on ready queue'.format(clock, p.name,p.tau), queue)
-                    else: print('time {}ms: Process {} (tau {}ms) completed I/O; placed on ready queue'.format(clock, p.name,p.tau), queue)
+                if (not(bursting==None) and not switch_in):
+                    if (bursting.tau-bursting.cpu_time>p.tau):
+                        if clock<1000 or not __debug__:
+                            print('time {}ms: Process {} (tau {}ms) completed I/O; preempting {}'.format(clock,p.name,p.tau,bursting.name),queue)
+                        preemption +=1
+                        switch_out = True
+                        preparation = tcs + 1
+                        to_io=bursting
+                        preempt_flag = True
+                        bursting = None
+                    else:
+                        if clock < 1000 or not __debug__:
+                            print('time {}ms: Process {} (tau {}ms) completed I/O; placed on ready queue'.format(clock, p.name,p.tau), queue)
+                else:
+                    if (switch_in):
+                        finished_io = p
+                    if clock < 1000 or not __debug__:
+                        print('time {}ms: Process {} (tau {}ms) completed I/O; placed on ready queue'.format(clock, p.name,p.tau), queue)
         for p in remove:
             ios.remove(p)
         ios.sort()
@@ -674,7 +693,7 @@ def SRT(processes, tcs, simout,lamb,alpha):
         # If there isn't a process anywhere, break the simulation, and directly
         # add tcs to the clock to account for the final context switch
         if len(pre_arrival) == 0 and len(ios) == 0 and bursting == None and len(queue) == 0 and to_io == None:
-            print('time {}ms: Simulator ended for SJF'.format(clock + tcs), queue)
+            print('time {}ms: Simulator ended for SRT'.format(clock + tcs), queue,'\n')
             break
 
 ############################# metrics calculation ##############################
@@ -921,7 +940,7 @@ def RR(processes, tcs, simout,tslice,rradd):
         # If there isn't a process anywhere, break the simulation, and directly
         # add tcs to the clock to account for the final context switch
         if len(pre_arrival) == 0 and len(ios) == 0 and bursting == None and len(queue) == 0 and to_io == None:
-            print('time {}ms: Simulator ended for RR'.format(clock + tcs), queue)
+            print('time {}ms: Simulator ended for RR'.format(clock + tcs), queue,'\n')
             break
 
 ############################# metrics calculation ##############################
@@ -963,10 +982,10 @@ def main(args):
     # Note that we use a copy of the processes generated, so we don't need to
     # generate the processes again. We divide tcs by 2 to indicate half of the 
     # context switch time
-    #FCFS(copy.deepcopy(processes), args.tcs // 2, simout)
+    FCFS(copy.deepcopy(processes), args.tcs // 2, simout)
     SJF(copy.deepcopy(processes), args.tcs // 2, simout,args.Lambda,args.alpha)
-    #SRT(copy.deepcopy(processes),args.tcs // 2, simout, args.Lambda,args.alpha)
-    #RR(copy.deepcopy(processes),args.tcs // 2, simout, args.tslice,args.rradd)
+    SRT(copy.deepcopy(processes),args.tcs // 2, simout, args.Lambda,args.alpha)
+    RR(copy.deepcopy(processes),args.tcs // 2, simout, args.tslice,args.rradd)
 
 if __name__ == '__main__':
     main(parsing())
