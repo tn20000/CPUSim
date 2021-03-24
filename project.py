@@ -252,10 +252,9 @@ def FCFS(processes, tcs, simout):
            '-- total number of preemptions: 0\n' + \
            '-- CPU utilization: {:.3f}%\n'.format(sum(burst_time) / (clock + tcs) * 100)
     simout.write(data)
-def tau_function(alpha,tau_init,burst_time):
-    return math.ceil(alpha*burst_time+(1-alpha)*tau_init)
-def priority_tuple(process):
-    return (process,process)
+def tau_function(process,alpha):
+    tau=alpha*process.tau+(1-alpha)*process.consttimelist[0]
+    return int(tau)
 def SJF(processes, tcs, simout,lamb,alpha):
     """
     The SJF algorithm
@@ -278,7 +277,7 @@ def SJF(processes, tcs, simout,lamb,alpha):
     clock = 0 
 
     # queue of FCFS, could be changed to accommodate priority queue
-    queue = Queue(mode='pq')
+    queue = Queue('pq')
 
     # List of processes before arrival
     pre_arrival = [] 
@@ -316,7 +315,8 @@ def SJF(processes, tcs, simout,lamb,alpha):
     # pre_arrival list
     for p in processes:
         if p.arrival == 0:
-            queue.push(priority_tuple(p))
+            p.tau=int(1/lamb)
+            queue.push((p.tau,p))
             print('time {}ms: Process {} (tau {}ms) arrived; placed on ready queue'.format(clock, p.name,p.tau), queue)
         else:
             pre_arrival.append(p)
@@ -362,7 +362,9 @@ def SJF(processes, tcs, simout,lamb,alpha):
                     if bursting.num_bursts == 1:
                         s = ''
                     if clock < 1000 or not __debug__:
-                        print('time {}ms: Process {} completed a CPU burst; {} burst{} to go'.format(clock, bursting.name, bursting.num_bursts, s), queue)
+                        print('time {}ms: Process {} (tau {}ms) completed a CPU burst; {} burst{} to go'.format(clock, bursting.name, bursting.tau,bursting.num_bursts, s), queue)
+                        bursting.tau=tau_function(bursting,alpha)
+                        bursting.consttimelist.pop(0)
                         print('time {}ms: Recalculated tau ({}ms) for process {}'.format(clock,bursting.tau,bursting.name),queue)
                         print('time {}ms: Process {} switching out of CPU; will block on I/O until time {}ms'.format(clock, bursting.name, clock + bursting.timelist[0] + tcs), queue)
                     to_io = bursting
@@ -379,8 +381,7 @@ def SJF(processes, tcs, simout,lamb,alpha):
                 switch_in = False
                 burst_time.append(0)
                 if clock < 1000 or not __debug__:
-                    print('time {}ms: Process {} (tau {}ms) started using the CPU for {}ms burst'.format(clock,bursting.name,int(1/lamb), bursting.timelist[0]), queue)
-                    bursting.tau=tau_function(alpha,bursting.tau,bursting.timelist[0])
+                    print('time {}ms: Process {} (tau {}ms) started using the CPU for {}ms burst'.format(clock,bursting.name,bursting.tau, bursting.timelist[0]), queue)
         
         # Do IO for each process and check if any process completed IO. Note
         # that the IO list must always be in alphabetical order
@@ -389,12 +390,12 @@ def SJF(processes, tcs, simout,lamb,alpha):
             p.timelist[0] -= 1
             if p.timelist[0] == 0:
                 p.timelist.pop(0)
-                #change it for priority queue
-                queue.push(priority_tuple(p))
+                p.consttimelist.pop(0)
+                queue.push((p.tau,p))
                 p.wait.append(0)
                 remove.append(p)
                 if clock < 1000 or not __debug__:
-                    print('time {}ms: Process {} completed I/O; placed on ready queue'.format(clock, p.name), queue)
+                    print('time {}ms: Process {} (tau {}ms) completed I/O; placed on ready queue'.format(clock, p.name,p.tau), queue)
         for p in remove:
             ios.remove(p)
         ios.sort()
@@ -404,7 +405,8 @@ def SJF(processes, tcs, simout,lamb,alpha):
         for p in pre_arrival:
             p.arrival -= 1
             if p.arrival == 0:
-                queue.push(priority_tuple(p))
+                p.tau=int(1/lamb)
+                queue.push((p.tau,p))
                 p.wait.append(0)
                 remove.append(p)
                 if clock < 1000 or not __debug__:
@@ -727,9 +729,9 @@ def main(args):
     # generate the processes again. We divide tcs by 2 to indicate half of the 
     # context switch time
     #FCFS(copy.deepcopy(processes), args.tcs // 2, simout)
-    #SJF(copy.deepcopy(processes), args.tcs // 2, simout,args.Lambda,args.alpha)
+    SJF(copy.deepcopy(processes), args.tcs // 2, simout,args.Lambda,args.alpha)
     # SRT()
-    RR(copy.deepcopy(processes),args.tcs // 2, simout, args.tslice,args.rradd)
+    #RR(copy.deepcopy(processes),args.tcs // 2, simout, args.tslice,args.rradd)
 
 if __name__ == '__main__':
     main(parsing())
