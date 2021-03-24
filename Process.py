@@ -21,7 +21,7 @@ class Process:
         self.arrival = arrival
         self.num_bursts = num_bursts
         self.timelist = timelist
-        self.consttimelist = copy.deepcopy(timelist)
+        self.cpu_time = 0
         self.tau=tau
         self.wait = []
 
