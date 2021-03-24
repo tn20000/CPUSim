@@ -940,7 +940,7 @@ def RR(processes, tcs, simout,tslice,rradd):
         # If there isn't a process anywhere, break the simulation, and directly
         # add tcs to the clock to account for the final context switch
         if len(pre_arrival) == 0 and len(ios) == 0 and bursting == None and len(queue) == 0 and to_io == None:
-            print('time {}ms: Simulator ended for RR'.format(clock + tcs), queue,'\n')
+            print('time {}ms: Simulator ended for RR'.format(clock + tcs), queue)
             break
 
 ############################# metrics calculation ##############################
