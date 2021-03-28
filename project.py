@@ -117,7 +117,7 @@ def FCFS(processes, tcs, simout):
     # Select a process to burst if the queue is not empty
     if len(queue) != 0:
         bursting = queue.pop()
-        p.wait.append(0)
+        bursting.wait.append(0)
         switch_in = True
         preparation = tcs - 1
 
@@ -324,7 +324,7 @@ def SJF(processes, tcs, simout,lamb,alpha):
     # Select a process to burst if the queue is not empty
     if len(queue) != 0:
         bursting = queue.pop()[1]
-        p.wait.append(0)
+        bursting.wait.append(0)
         switch_in = True
         preparation = tcs - 1
 
@@ -539,7 +539,7 @@ def SRT(processes, tcs, simout,lamb,alpha):
     # Select a process to burst if the queue is not empty
     if len(queue) != 0:
         bursting = queue.pop()[1]
-        p.wait.append(0)
+        bursting.wait.append(0)
         switch_in = True
         preparation = tcs - 1
 
@@ -804,7 +804,7 @@ def RR(processes, tcs, simout,tslice,rradd):
     # Select a process to burst if the queue is not empty
     if len(queue) != 0:
         bursting = queue.pop()
-        p.wait.append(0)
+        bursting.wait.append(0)
         switch_in = True
         preparation = tcs - 1
 
